@@ -29,8 +29,11 @@ app.use(cookieParser());
 // custom middlewares
 const verifyToken = (req, res, next) => {
   const token = req.cookies?.userToken;
+  //   console.log({ token });
   if (!token) {
-    return res.status(401).send({ message: "Not Authorized" });
+    return res
+      .status(401)
+      .send({ message: "Not Authorized. Token not found." });
   }
   try {
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
@@ -100,20 +103,14 @@ async function run() {
       res.send(result);
     });
 
-    //   get all user
-    app.get("/users", async (req, res) => {
-      const users = await usersCollection.find({}).toArray();
-      res.send(users);
-    });
-
     //   add todo to database
-    app.post("/todos", async (req, res) => {
+    app.post("/todos", verifyToken, async (req, res) => {
       const todo = req.body;
       const result = await todosCollection.insertOne(todo);
       res.send(result);
     });
 
-    app.patch("/todos/:id", async (req, res) => {
+    app.patch("/todos/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const todo = req.body;
       //   console.log({ id, todo });
@@ -126,8 +123,14 @@ async function run() {
     });
 
     //   get all tasks
-    app.get("/todos", async (req, res) => {
-      const todos = await todosCollection.find({}).toArray();
+    app.get("/todos", verifyToken, async (req, res) => {
+      //   console.log("users email " + req.user?.email);
+      if (!req.user?.email)
+        return res.status(401).send({ message: "Not Authorized" });
+
+      const todos = await todosCollection
+        .find({ email: req.user?.email })
+        .toArray();
       res.send(todos);
     });
 
